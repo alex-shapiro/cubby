@@ -1,3 +1,3 @@
 # Bitmap CRDT
 
-CRDT key-value store based on roaring bitmap synchronization
+Synced KV store based on [roaring bitmaps](https://github.com/RoaringBitmap/roaring-rs) for efficient CRDT indexing at scale.
