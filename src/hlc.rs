@@ -44,8 +44,8 @@ impl Hlc {
         (self.0 & 0xFFFF) as u16
     }
 
-    /// Determines whether a remote HLC is valid. An HLC is valid if
-    /// its physical time (pt) is no more than 30s ahead of device pt.
+    //// Determines whether a remote HLC is valid. An HLC is valid if
+    //// its physical time (pt) is no more than 30s ahead of device pt.
     // #[inline]
     // pub fn is_valid(&self) -> bool {
     //     self.l() <= Self::makept() + 30_000_000

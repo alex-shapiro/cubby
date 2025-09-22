@@ -8,7 +8,7 @@ use crate::{
     peer_id::PeerId,
 };
 
-pub struct InMemoryStore<K, V> {
+pub struct MemStore<K, V> {
     local_id: PeerId,
     entries: BTreeMap<K, Entry<V>>,
     peers: HashMap<PeerId, PeerState<K>>,
@@ -36,11 +36,11 @@ impl<K> Default for PeerState<K> {
     }
 }
 
-impl<K: Clone + Ord, V: Clone> InMemoryStore<K, V> {
+impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
     /// Creates a new, empty CRDT
     pub fn new(id: &str) -> Self {
         let local_id = PeerId::from_str(id);
-        InMemoryStore {
+        MemStore {
             local_id,
             entries: BTreeMap::default(),
             peers: HashMap::default(),
