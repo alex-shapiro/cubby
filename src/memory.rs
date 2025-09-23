@@ -306,23 +306,6 @@ impl<K> PeerState<K> {
     }
 }
 
-// impl<'a, K, V> PartialEq for Entries<'a, K, V>
-// where
-//     K: PartialEq,
-//     V: PartialEq,
-// {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.0 == other.0
-//     }
-// }
-
-// impl<'a, K, V> Eq for Entries<'a, K, V>
-// where
-//     K: Ord + Eq,
-//     V: Eq,
-// {
-// }
-
 impl<'a, K: Ord + Clone, V: Clone> MemStoreTxn<'a, K, V> {
     /// Inserts a key-value pair into the CRDT
     pub fn insert(&mut self, key: K, value: V) {

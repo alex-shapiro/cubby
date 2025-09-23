@@ -33,3 +33,17 @@ pub struct Insert<K, V> {
     pub value: V,
     pub hlc: Hlc,
 }
+
+impl DiffRequest {
+    /// Returns the index size, in bytes
+    pub fn index_size(&self) -> usize {
+        self.0.iter().map(|(_, state)| state.index_size()).sum()
+    }
+}
+
+impl DiffRequestPeerState {
+    /// Returns the index size, in bytes
+    pub fn index_size(&self) -> usize {
+        self.index.serialized_size()
+    }
+}

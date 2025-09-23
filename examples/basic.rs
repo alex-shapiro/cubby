@@ -1,4 +1,4 @@
-//! Demonstration of basic, non-transactional state sync
+//! Basic, non-transactional state sync
 
 use bitmap_crdt::memory::MemStore;
 
@@ -7,14 +7,14 @@ fn main() {
     let mut b = MemStore::new("bob");
 
     for _ in 0..1000 {
-        // add 1000 random entries to A
+        // Add 1000 random entries to A
         let mut key = [0u8; 16];
         let mut value = [0u8; 128];
         rand::fill(&mut key);
         rand::fill(&mut value);
         a.insert(key, value);
 
-        // add 1000 random entries to B
+        // Add 1000 random entries to B
         let mut key = [0u8; 16];
         let mut value = [0u8; 128];
         rand::fill(&mut key);
@@ -22,13 +22,16 @@ fn main() {
         b.insert(key, value);
     }
 
-    // full state sync from B => A
+    // Full state sync from B => A
+    // The sync request size is ~2KB
     let request = a.request_diff();
+    assert!(request.index_size() <= 2200);
     let diff = b.build_diff(request);
     a.integrate_diff(diff);
 
-    // full state sync from A => B
+    // Full state sync from A => B
     let request = b.request_diff();
+    assert!(request.index_size() <= 2200);
     let diff = a.build_diff(request);
     b.integrate_diff(diff);
 
