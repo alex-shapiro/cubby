@@ -2,41 +2,45 @@
 
 Synced KV store backed by [roaring bitmap](https://github.com/RoaringBitmap/roaring-rs) state CRDTs. Properties:
 
-* tombstone-free CRDTs allow for data churn without unbounded growth or garbage collection
-* pull-based sync (can be extended to push-based sync)
-* highly compressed peer state via roaring bitmaps
+* pull-based state sync
+* push-based op sync
+* no tombstones
+* no garbage collection
 
-## Example
+## Basic Example
 
-Full State Sync:
+The following
 
 ```rs
-let mut a = MemStore::new();
-let mut b = MemStore::new();
-let mut rng = rand::rng();
+let mut a = MemStore::new("alice");
+let mut b = MemStore::new("bob");
 
+// add 1000 random entries each to A and B
 for _ in 0..1000 {
-    let key: [u8; 16] = rng.generate();
-    let val: [u8; 128] = rng.generate();
-    a.insert(key, val);
+    let mut key = [0u8; 16];
+    let mut value = [0u8; 128];
+    rand::fill(&mut key);
+    rand::fill(&mut value);
+    a.insert(key, value);
 
-    let key: [u8; 16] = rng.generate();
-    let val: [u8; 128] = rng.generate();
-    b.insert(key, val);
+        let mut key = [0u8; 16];
+        let mut value = [0u8; 128];
+        rand::fill(&mut key);
+        rand::fill(&mut value);
+        b.insert(key, value);
 }
 
 // full state sync from B => A
-let request = a.build_request();
+let request = a.request_diff();
 let diff = b.build_diff(request);
-a.integrate_diff(b);
+a.integrate_diff(diff);
 
 // full state sync from A => B
-let request = b.build_request();
+let request = b.request_diff();
 let diff = a.build_diff(request);
-b.integrate_diff(a);
+b.integrate_diff(diff);
 
-// A and B now have identical entries
-assert_eq!(a.entries(), b.entries());
+assert_eq!(a.entries(), b.entries())
 ```
 
 Incremental Op Sync:
@@ -54,6 +58,25 @@ for _ in 0..1000 {
 }
 
 // A has sent B all of its entries
+assert_eq!(a.entries(), b.entries());
+```
+
+Transactions:
+
+```rs
+let mut a = MemStore::new();
+let mut b = MemStore::new():
+
+let a_txn = a.begin();
+
+for _ in 0..10000 {
+    let key: [u8; 16] = rng.generate();
+    let val: [u8; 128] = rng.generate();
+    a.insert(key, val);
+}
+
+let ops = a.commit_with_ops();
+b.integrate_ops(ops);
 assert_eq!(a.entries(), b.entries());
 ```
 

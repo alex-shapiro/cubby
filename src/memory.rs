@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, btree_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
 use roaring::RoaringTreemap;
 
@@ -14,6 +14,16 @@ pub struct MemStore<K, V> {
     peers: HashMap<PeerId, PeerState<K>>,
 }
 
+pub struct MemStoreTxn<'a, K, V> {
+    store: &'a mut MemStore<K, V>,
+    inserts: BTreeMap<K, V>,
+    deletes: BTreeSet<K>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Entries<'a, K, V>(&'a BTreeMap<K, Entry<V>>);
+
+#[derive(Debug, PartialEq, Eq)]
 struct Entry<V> {
     value: V,
     author: PeerId,
@@ -40,10 +50,12 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
     /// Creates a new, empty CRDT
     pub fn new(id: &str) -> Self {
         let local_id = PeerId::from_str(id);
+        let mut peers = HashMap::default();
+        peers.insert(local_id.clone(), PeerState::default());
         MemStore {
             local_id,
             entries: BTreeMap::default(),
-            peers: HashMap::default(),
+            peers,
         }
     }
 
@@ -63,11 +75,34 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         self.entries.is_empty()
     }
 
+    pub fn entries<'a>(&'a self) -> Entries<'a, K, V> {
+        Entries(&self.entries)
+    }
+
+    pub fn begin<'a>(&'a mut self) -> MemStoreTxn<'a, K, V> {
+        MemStoreTxn {
+            store: self,
+            inserts: BTreeMap::default(),
+            deletes: BTreeSet::default(),
+        }
+    }
+
     /// Inserts a key-value pair into the CRDT
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.insert_with_hlc(key, value, None)
+    }
+
+    // Private insert method
+    // - if called inside of a transaction, expect a `txn_hlc`
+    // - if called outside of a transaction, generate the HLC from the current bookmark
+    fn insert_with_hlc(&mut self, key: K, value: V, txn_hlc: Option<Hlc>) -> Option<V> {
         // update peer state
-        let peer_state = self.peers.entry(self.local_id.clone()).or_default();
-        let hlc = peer_state.bookmark.next();
+        let peer_state = self.mut_local_peer_state();
+        let hlc = if let Some(hlc) = txn_hlc {
+            hlc
+        } else {
+            peer_state.bookmark.next()
+        };
         peer_state.index.insert(hlc.to_u64());
         peer_state.keys.insert(hlc, key.clone());
         peer_state.bookmark = hlc;
@@ -94,6 +129,12 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         }
 
         Some(old_entry.value)
+    }
+
+    fn mut_local_peer_state(&mut self) -> &mut PeerState<K> {
+        self.peers
+            .get_mut(&self.local_id)
+            .expect("local peer state must always exist")
     }
 
     /// Removes a key from the CRDT, returning the value at the key if the key was previously in the CRDT.
@@ -188,7 +229,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
     }
 
     /// Integrates a diff into the local CRDT
-    pub fn integrate(&mut self, diff: Diff<K, V>) {
+    pub fn integrate_diff(&mut self, diff: Diff<K, V>) {
         let mut overwritten: HashMap<PeerId, Vec<Hlc>> = HashMap::default();
 
         // integrate deletes
@@ -261,6 +302,51 @@ impl<K> PeerState<K> {
         DiffRequestPeerState {
             index: self.index.clone(),
             bookmark: self.bookmark,
+        }
+    }
+}
+
+// impl<'a, K, V> PartialEq for Entries<'a, K, V>
+// where
+//     K: PartialEq,
+//     V: PartialEq,
+// {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.0 == other.0
+//     }
+// }
+
+// impl<'a, K, V> Eq for Entries<'a, K, V>
+// where
+//     K: Ord + Eq,
+//     V: Eq,
+// {
+// }
+
+impl<'a, K: Ord + Clone, V: Clone> MemStoreTxn<'a, K, V> {
+    /// Inserts a key-value pair into the CRDT
+    pub fn insert(&mut self, key: K, value: V) {
+        self.inserts.insert(key, value);
+    }
+
+    /// Removes a key from the CRDT
+    pub fn remove(&mut self, key: &K) {
+        self.inserts.remove(key);
+        self.deletes.insert(key.to_owned());
+    }
+
+    /// Aborts the transaction
+    pub fn abort(self) {}
+
+    /// Commits the transaction
+    pub fn commit(self) {
+        let mut hlc = self.store.mut_local_peer_state().bookmark.next();
+        for (key, value) in self.inserts {
+            self.store.insert_with_hlc(key, value, Some(hlc));
+            hlc = hlc.inc();
+        }
+        for key in self.deletes {
+            self.store.remove(&key);
         }
     }
 }

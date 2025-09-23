@@ -63,6 +63,12 @@ impl Hlc {
         self.next_inner(Self::makept())
     }
 
+    /// Increments the HLC by one
+    #[inline]
+    pub fn inc(self) -> Self {
+        Self(self.0 + 1)
+    }
+
     #[inline]
     fn next_inner(self, pt: u64) -> Self {
         let l = max(self.l(), pt);
