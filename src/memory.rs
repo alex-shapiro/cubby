@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
+use std::collections::{btree_map, BTreeMap, BTreeSet, HashMap};
 
 use roaring::RoaringTreemap;
 
@@ -180,7 +180,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
             };
 
             if let Some(request) = request.0.get(peer_id) {
-                // inserts: all e ⊂ local AND e ⊄ remote AND e > remote.max
+                // inserts: all e ⊂ (local - remote) AND e > remote.max
                 let mut insert_hlcs = &peer_state.index - &request.index;
                 insert_hlcs.remove_range(0..=request.bookmark.to_u64());
                 diff_peer_state.inserts = insert_hlcs
@@ -197,7 +197,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
                     })
                     .collect();
 
-                // deletes: all e ⊂ remote AND e ⊄ local AND e ≤ local.max
+                // deletes: all e ⊂ (remote - local) AND e ≤ local.max
                 diff_peer_state.deletes = &request.index - &peer_state.index;
                 diff_peer_state
                     .deletes

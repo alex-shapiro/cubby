@@ -3,17 +3,6 @@
 version = 4
 
 [[package]]
-name = "bitmap-crdt"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "rand",
- "roaring",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "bytemuck"
 version = "1.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -39,6 +28,17 @@ name = "cfg-if"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd1289c04a9ea8cb22300a459a72a385d7c73d3259e2ed7dcb2af674838cfa9"
+
+[[package]]
+name = "cubby"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "rand",
+ "roaring",
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "getrandom"
