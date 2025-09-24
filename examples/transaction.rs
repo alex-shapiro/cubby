@@ -1,6 +1,6 @@
-//! Transaction inserts with state sync
+//! Transactional inserts with state sync
 
-use bitmap_crdt::memory::MemStore;
+use cubby::memory::MemStore;
 
 fn main() {
     let mut a = MemStore::new("alice");
