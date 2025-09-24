@@ -13,9 +13,9 @@ std::thread_local! {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Serialize, Deserialize)]
-pub struct Hlc(u64);
+pub(crate) struct Hlc(u64);
 
-/// Hybrid Logical Clock used to uniquely identify each row from a single editor.
+/// Hybrid Logical Clock used to uniquely identify each row from a single peer.
 impl Hlc {
     #[inline]
     pub fn new(l: u64, c: u16) -> Self {
@@ -43,13 +43,6 @@ impl Hlc {
     pub fn c(self) -> u16 {
         (self.0 & 0xFFFF) as u16
     }
-
-    //// Determines whether a remote HLC is valid. An HLC is valid if
-    //// its physical time (pt) is no more than 30s ahead of device pt.
-    // #[inline]
-    // pub fn is_valid(&self) -> bool {
-    //     self.l() <= Self::makept() + 30_000_000
-    // }
 
     /// Creates a new HLC from an existing, local HLC.
     /// If physical time (pt) has changed, l is set to pt and c is set to 0.

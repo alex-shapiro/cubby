@@ -8,18 +8,22 @@ use crate::{
     peer_id::PeerId,
 };
 
+/// In-memory key value store backed by a roaring bitmap CRDT
 pub struct MemStore<K, V> {
     local_id: PeerId,
     entries: BTreeMap<K, Entry<V>>,
     peers: HashMap<PeerId, PeerState<K>>,
 }
 
+/// MemStore transactional context
 pub struct MemStoreTxn<'a, K, V> {
     store: &'a mut MemStore<K, V>,
     inserts: BTreeMap<K, V>,
     deletes: BTreeSet<K>,
 }
 
+/// MemStore entries without local-specific metadata.
+/// Currently used for checking MemStore equality between peers.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Entries<'a, K, V>(&'a BTreeMap<K, Entry<V>>);
 
@@ -75,10 +79,12 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         self.entries.is_empty()
     }
 
+    /// Returns an object that contains store entries without local-specific metadata
     pub fn entries<'a>(&'a self) -> Entries<'a, K, V> {
         Entries(&self.entries)
     }
 
+    /// Begins a transaction
     pub fn begin<'a>(&'a mut self) -> MemStoreTxn<'a, K, V> {
         MemStoreTxn {
             store: self,
@@ -158,7 +164,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         self.entries.get(key).map(|entry| &entry.value)
     }
 
-    /// Returns a diff request object
+    /// Returns a diff request object based on the current local state
     pub fn request_diff(&self) -> DiffRequest {
         DiffRequest(
             self.peers
@@ -168,7 +174,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         )
     }
 
-    /// Returns a diff from the request
+    /// Builds a diff from the request object
     pub fn build_diff(&self, request: DiffRequest) -> Diff<K, V> {
         let mut diff_peer_states = HashMap::with_capacity(self.peers.len());
 

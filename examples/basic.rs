@@ -6,7 +6,7 @@ fn main() {
     let mut a = MemStore::new("alice");
     let mut b = MemStore::new("bob");
 
-    for _ in 0..1000 {
+    for _ in 0..1_000 {
         // Add 1000 random entries to A
         let mut key = [0u8; 16];
         let mut value = [0u8; 128];
@@ -25,7 +25,7 @@ fn main() {
     // Full state sync from B => A
     // The sync request size is ~2KB
     let request = a.request_diff();
-    assert!(request.index_size() <= 2200);
+    assert!(request.index_size() <= 2200, "{}", request.index_size());
     let diff = b.build_diff(request);
     a.integrate_diff(diff);
 

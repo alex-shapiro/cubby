@@ -12,7 +12,7 @@ Synced KV store backed by an experimental [roaring bitmap](https://github.com/Ro
 
 Basic state sync example:
 
-```rs
+```rust
 let mut a = MemStore::new("alice");
 let mut b = MemStore::new("bob");
 
@@ -59,11 +59,11 @@ You can find other examples in the `examples/` directory.
 
 ### Why roaring bitmaps?
 
-**TL;DR** Roaring bitmaps provide an efficient way to compress and compute over number sets, and logical clock accounting is mostly computing over number sets.
+**TL;DR** *Roaring bitmaps provide an efficient way to compress and compute over number sets, and logical clock accounting is mostly computing over number sets.*
 
-CRDT state sync can take on a few forms. Cubby uses a request-response form: peer A requests a state sync from peer B and receives all updates (inserts and deletes) as a response. The goal is to minimize the compute requirements and size of request & response while avoiding tombstones or garbage collection.
+CRDT state sync can take on a few forms. Cubby uses a request-response form: peer A requests a state sync from peer B and receives all updates (inserts and deletes) as a response. Cubby's goal is to minimize compute the requirements and size of request + response pair, while avoiding the complexity of tombstones and garbage collection.
 
-In the most naive approach, peer B transfers its entire state to A on each sync. This approach has the downside of sending lots of unnecessary data. Ideally, we want to send the minimum set of inserts and deletes that A needs from B.
+The most naive approach is for peer B to transfer its entire state to A on each sync. However, to scale to large data stores we must sync the minimum set of inserts and deletes that A needs from B.
 
 The minimum set can be found with the following logic:
 
