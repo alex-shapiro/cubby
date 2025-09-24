@@ -82,14 +82,14 @@ This crate makes an explicit tradeoff: stateful sync in exchange for no tombston
 
 While roaring bitmaps compress CRDT state, they do not eliminate it. If you need to sync billions of rows, you should test against your use case's write pattern. Concretely, if your use case is mostly inserts and few deletes, you may be better off with a tombstoned + GC'ed CRDT.
 
-### Roadmap: Op Sync
+### TODO: Op Sync
 
 Op sync will complement state sync:
 
 - on initial connection, A and B use state sync
 - throughout the session, A and B use op sync for fast incremental diffs
 
-### Roadmap: Peer State LRU Cache
+### TODO: Peer State LRU Cache
 
 It may be possible to compress state sync further by LRU-caching peers' past sync states.
 

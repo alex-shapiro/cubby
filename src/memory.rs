@@ -1,4 +1,4 @@
-use std::collections::{btree_map, BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, btree_map};
 
 use roaring::RoaringTreemap;
 
@@ -331,5 +331,15 @@ impl<'a, K: Ord + Clone, V: Clone> MemStoreTxn<'a, K, V> {
         for key in self.deletes {
             self.store.remove(&key);
         }
+    }
+}
+
+impl<'a, K: Ord, V> Entries<'a, K, V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.0.get(key).map(|entry| &entry.value)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.0.iter().map(|(key, entry)| (key, &entry.value))
     }
 }
