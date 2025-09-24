@@ -120,9 +120,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
             hlc,
         };
 
-        let Some(old_entry) = self.entries.insert(key, entry) else {
-            return None;
-        };
+        let old_entry = self.entries.insert(key, entry)?;
 
         // update peer state for overwritten entry
         let peer_state = self
@@ -145,9 +143,7 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
 
     /// Removes a key from the CRDT, returning the value at the key if the key was previously in the CRDT.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let Some(old_entry) = self.entries.remove(key) else {
-            return None;
-        };
+        let old_entry = self.entries.remove(key)?;
 
         let peer_state = self
             .peers

@@ -37,7 +37,7 @@ pub struct Insert<K, V> {
 impl DiffRequest {
     /// Returns the index size, in bytes
     pub fn index_size(&self) -> usize {
-        self.0.iter().map(|(_, state)| state.index_size()).sum()
+        self.0.values().map(|state| state.index_size()).sum()
     }
 }
 
