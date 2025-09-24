@@ -102,3 +102,16 @@ It may be possible to compress state sync further by LRU-caching peers' past syn
 - If the hash is different, B requests a full sync request from A
 
 Caching can significantly compress state sync in cases where peer state is large. However, any delete in `B[..=cached_max]` will bust the cache. It may more robust to hash individual bitmap containers instead of hashing the full bitmap once. TBD.
+
+## License
+
+Cubby is licensed under either of
+
+* [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+* [MIT license](https://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Cubby by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
