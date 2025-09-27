@@ -49,12 +49,15 @@ You can find other examples in the `examples/` directory.
 ### Roadmap
 
 - [x] In-Mememory Store
-- [x] Transactions
-- [x] State Sync
-- [x] Op Sync
+- [x] Mem Transactions
+- [x] Mem State Sync
+- [x] Mem Op Sync
 - [ ] Formal verification
 - [ ] Peer State LRU cache
 - [ ] Persisted KV Store
+- [ ] Persisted State sync
+- [ ] Persisted Op sync
+- [ ] Containerized SQL storage
 - [ ] Persisted SQL Store
 
 ### Why roaring bitmaps?

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{diff::Insert, hlc::Hlc, peer_id::PeerId};
 
-/// Incremental op diff
+/// Op set for incremental diffs during a live connection
 #[derive(Serialize, Deserialize)]
 pub struct OpSet<K, V> {
     pub(crate) peer_id: PeerId,
@@ -35,7 +35,7 @@ impl<K, V> OpSet<K, V> {
             .insert(hlc.to_u64());
     }
 
-    /// Merge one op diff into another
+    /// Merge one op set into another
     pub fn merge(&mut self, mut other: OpSet<K, V>) {
         self.inserts.append(&mut other.inserts);
         for (peer_id, other_treemap) in other.deletes {
