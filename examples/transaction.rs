@@ -1,4 +1,5 @@
 //! 1 million transactional inserts with state sync
+//! This should only run in --release mode (debug mode is too slow)
 
 use cubby::memory::MemStore;
 

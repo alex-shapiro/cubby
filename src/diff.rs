@@ -5,33 +5,35 @@ use serde::{Deserialize, Serialize};
 
 use crate::{hlc::Hlc, peer_id::PeerId};
 
+/// State diff request
 #[derive(Serialize, Deserialize)]
 pub struct DiffRequest(pub(crate) HashMap<PeerId, DiffRequestPeerState>);
 
 #[derive(Serialize, Deserialize)]
-pub struct DiffRequestPeerState {
+pub(crate) struct DiffRequestPeerState {
     #[serde(skip_serializing_if = "RoaringTreemap::is_empty")]
-    pub(crate) index: RoaringTreemap,
-    pub(crate) bookmark: Hlc,
+    pub index: RoaringTreemap,
+    pub bookmark: Hlc,
 }
 
+/// State diff
 #[derive(Serialize, Deserialize)]
 pub struct Diff<K, V>(pub(crate) HashMap<PeerId, DiffPeerState<K, V>>);
 
 #[derive(Serialize, Deserialize)]
-pub struct DiffPeerState<K, V> {
+pub(crate) struct DiffPeerState<K, V> {
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub(crate) inserts: Vec<Insert<K, V>>,
+    pub inserts: Vec<Insert<K, V>>,
     #[serde(skip_serializing_if = "RoaringTreemap::is_empty")]
-    pub(crate) deletes: RoaringTreemap,
-    pub(crate) bookmark: Hlc,
+    pub deletes: RoaringTreemap,
+    pub bookmark: Hlc,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Insert<K, V> {
-    pub(crate) key: K,
-    pub(crate) value: V,
-    pub(crate) hlc: Hlc,
+pub(crate) struct Insert<K, V> {
+    pub key: K,
+    pub value: V,
+    pub hlc: Hlc,
 }
 
 impl DiffRequest {

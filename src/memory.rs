@@ -5,6 +5,7 @@ use roaring::RoaringTreemap;
 use crate::{
     diff::{Diff, DiffPeerState, DiffRequest, DiffRequestPeerState, Insert},
     hlc::Hlc,
+    opset::OpSet,
     peer_id::PeerId,
 };
 
@@ -13,6 +14,7 @@ pub struct MemStore<K, V> {
     local_id: PeerId,
     entries: BTreeMap<K, Entry<V>>,
     peers: HashMap<PeerId, PeerState<K>>,
+    opset: Option<OpSet<K, V>>,
 }
 
 /// MemStore transactional context
@@ -60,7 +62,26 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
             local_id,
             entries: BTreeMap::default(),
             peers,
+            opset: None,
         }
+    }
+
+    /// Begins tracking opsets
+    pub fn with_opset(mut self) -> Self {
+        if self.opset.is_none() {
+            self.opset = Some(OpSet::new(self.local_id.clone()));
+        }
+        self
+    }
+
+    /// Takes the current opset and begins a new one
+    pub fn take_opset(&mut self) -> OpSet<K, V> {
+        let old = self
+            .opset
+            .take()
+            .unwrap_or_else(|| OpSet::new(self.local_id.clone()));
+        self.opset = Some(OpSet::new(self.local_id.clone()));
+        old
     }
 
     /// Returns the local peer ID
@@ -95,13 +116,14 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
 
     /// Inserts a key-value pair into the CRDT
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.insert_with_hlc(key, value, None)
+        self.insert_private(key, value, None)
     }
 
     // Private insert method
     // - if called inside of a transaction, expect a `txn_hlc`
     // - if called outside of a transaction, generate the HLC from the current bookmark
-    fn insert_with_hlc(&mut self, key: K, value: V, txn_hlc: Option<Hlc>) -> Option<V> {
+    // - if called with an opset, update the opset
+    fn insert_private(&mut self, key: K, value: V, txn_hlc: Option<Hlc>) -> Option<V> {
         // update peer state
         let peer_state = self.mut_local_peer_state();
         let hlc = if let Some(hlc) = txn_hlc {
@@ -112,6 +134,15 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         peer_state.index.insert(hlc.to_u64());
         peer_state.keys.insert(hlc, key.clone());
         peer_state.bookmark = hlc;
+
+        // add insert to opset
+        if let Some(opset) = &mut self.opset {
+            opset.add_insert(Insert {
+                key: key.clone(),
+                value: value.clone(),
+                hlc,
+            });
+        }
 
         // update kv entries
         let entry = Entry {
@@ -132,6 +163,11 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
             peer_state.keys.remove(&old_entry.hlc);
         }
 
+        // add delete to opset
+        if let Some(opset) = &mut self.opset {
+            opset.add_delete(old_entry.author, old_entry.hlc);
+        }
+
         Some(old_entry.value)
     }
 
@@ -143,6 +179,10 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
 
     /// Removes a key from the CRDT, returning the value at the key if the key was previously in the CRDT.
     pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.remove_private(key)
+    }
+
+    fn remove_private(&mut self, key: &K) -> Option<V> {
         let old_entry = self.entries.remove(key)?;
 
         let peer_state = self
@@ -152,6 +192,11 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
 
         peer_state.index.remove(old_entry.hlc.to_u64());
         peer_state.keys.remove(&old_entry.hlc);
+
+        if let Some(opset) = &mut self.opset {
+            opset.add_delete(old_entry.author, old_entry.hlc);
+        }
+
         Some(old_entry.value)
     }
 
@@ -297,6 +342,42 @@ impl<K: Clone + Ord, V: Clone> MemStore<K, V> {
         peer.bookmark = peer.bookmark.max(diff_peer.bookmark);
         peer.bookmark
     }
+
+    pub fn integrate_opset(&mut self, opset: OpSet<K, V>) {
+        let peer = self.peers.entry(opset.peer_id.clone()).or_default();
+
+        for insert in opset.inserts {
+            let did_insert = match self.entries.entry(insert.key.clone()) {
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(Entry {
+                        value: insert.value,
+                        author: opset.peer_id.clone(),
+                        hlc: insert.hlc,
+                    });
+                    true
+                }
+                btree_map::Entry::Occupied(mut entry) => {
+                    // replace the old entry iff the new insert follows causally
+                    let old = entry.get_mut();
+                    if old.hlc < insert.hlc || old.hlc == insert.hlc && old.author < opset.peer_id {
+                        entry.insert(Entry {
+                            value: insert.value,
+                            author: opset.peer_id.clone(),
+                            hlc: insert.hlc,
+                        });
+                        true
+                    } else {
+                        false
+                    }
+                }
+            };
+
+            if did_insert {
+                peer.index.insert(insert.hlc.to_u64());
+                peer.keys.insert(insert.hlc, insert.key);
+            }
+        }
+    }
 }
 
 impl<K> PeerState<K> {
@@ -327,7 +408,7 @@ impl<'a, K: Ord + Clone, V: Clone> MemStoreTxn<'a, K, V> {
     pub fn commit(self) {
         let mut hlc = self.store.mut_local_peer_state().bookmark.next();
         for (key, value) in self.inserts {
-            self.store.insert_with_hlc(key, value, Some(hlc));
+            self.store.insert_private(key, value, Some(hlc));
             hlc = hlc.inc();
         }
         for key in self.deletes {

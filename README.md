@@ -4,7 +4,7 @@ Synced KV store backed by an experimental [roaring bitmap](https://github.com/Ro
 
 * transactions
 * pull-based state sync
-* push-based op sync (TODO)
+* push-based op sync
 * no tombstones
 * no garbage collection
 
@@ -51,9 +51,9 @@ You can find other examples in the `examples/` directory.
 - [x] In-Mememory Store
 - [x] Transactions
 - [x] State Sync
+- [x] Op Sync
 - [ ] Formal verification
 - [ ] Peer State LRU cache
-- [ ] Op Sync
 - [ ] Persisted KV Store
 - [ ] Persisted SQL Store
 
@@ -81,13 +81,6 @@ Technically, the size of the roaring bitmap grows with the size of the elements 
 This crate makes an explicit tradeoff: stateful sync in exchange for no tombstones or garbage collection. It can be a good choice if your write pattern involves frequent updates to a few million KV pairs, since this pattern can potentially generate far more tombstones than fresh entries.
 
 While roaring bitmaps compress CRDT state, they do not eliminate it. If you need to sync billions of rows, you should test against your use case's write pattern. Concretely, if your use case is mostly inserts and few deletes, you may be better off with a tombstoned + GC'ed CRDT.
-
-### TODO: Op Sync
-
-Op sync will complement state sync:
-
-- on initial connection, A and B use state sync
-- throughout the session, A and B use op sync for fast incremental diffs
 
 ### TODO: Peer State LRU Cache
 
